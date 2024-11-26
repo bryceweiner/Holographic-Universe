@@ -69,8 +69,8 @@ class BayesianAnalysis:
             calculate_chi_square(0.315, 0.298, 0.007)    # DES Y3
         )
 
-        # Calculate chi-square for QBU (0.298)
-        chi_square_qbu = (
+        # Calculate chi-square for HU (0.298)
+        chi_square_hu = (
             calculate_chi_square(0.298, 0.267, 0.017) +  # DES Y1
             calculate_chi_square(0.298, 0.298, 0.007)    # DES Y3
         )
@@ -78,13 +78,13 @@ class BayesianAnalysis:
         dof = 2  # Two DES measurements
 
         # Simple Bayes factor calculation
-        bayes_factor = np.exp(-0.5 * (chi_square_qbu - chi_square_lcdm))
+        bayes_factor = np.exp(-0.5 * (chi_square_hu - chi_square_lcdm))
 
         return (
             ModelComparison('ΛCDM', chi_square_lcdm, dof,
                           1 - stats.chi2.cdf(chi_square_lcdm, dof), 1.0),
-            ModelComparison('QBU', chi_square_qbu, dof,
-                          1 - stats.chi2.cdf(chi_square_qbu, dof), bayes_factor)
+            ModelComparison('HU', chi_square_hu, dof,
+                          1 - stats.chi2.cdf(chi_square_hu, dof), bayes_factor)
         )
 
     def analyze_h0(self) -> Tuple[ModelComparison, ModelComparison]:
@@ -93,9 +93,9 @@ class BayesianAnalysis:
         lcdm_early = 67.36
         lcdm_late = 67.36
 
-        # QBU predictions (accounts for tension)
-        qbu_early = 67.90
-        qbu_late = 73.2
+        # HU predictions (accounts for tension)
+        hu_early = 67.90
+        hu_late = 73.2
 
         # Calculate chi-square with proper weighting for early/late tension
         chi_square_lcdm = sum(
@@ -106,11 +106,11 @@ class BayesianAnalysis:
             for data in self.h0_late_data.values()
         )
 
-        chi_square_qbu = sum(
-            self.calculate_chi_square(data['value'], qbu_early, data['error'])
+        chi_square_hu = sum(
+            self.calculate_chi_square(data['value'], hu_early, data['error'])
             for data in self.h0_early_data.values()
         ) + sum(
-            self.calculate_chi_square(data['value'], qbu_late, data['error'])
+            self.calculate_chi_square(data['value'], hu_late, data['error'])
             for data in self.h0_late_data.values()
         )
 
@@ -118,15 +118,15 @@ class BayesianAnalysis:
         
         # Bayes factor calculation with tension consideration
         bayes_factor = self.calculate_bayes_factor(
-            chi_square_lcdm, chi_square_qbu, 2, 2,
+            chi_square_lcdm, chi_square_hu, 2, 2,
             len(self.h0_early_data) + len(self.h0_late_data)
-        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_qbu))  # Additional weight for resolving tension
+        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_hu))  # Additional weight for resolving tension
 
         return (
             ModelComparison('ΛCDM', chi_square_lcdm, dof,
                           1 - stats.chi2.cdf(chi_square_lcdm, dof), 1.0),
-            ModelComparison('QBU', chi_square_qbu, dof,
-                          1 - stats.chi2.cdf(chi_square_qbu, dof), bayes_factor)
+            ModelComparison('HU', chi_square_hu, dof,
+                          1 - stats.chi2.cdf(chi_square_hu, dof), bayes_factor)
         )
 
     def analyze_bao(self) -> Tuple[ModelComparison, ModelComparison]:
@@ -134,8 +134,8 @@ class BayesianAnalysis:
         def lcdm_prediction(z):
             return 20.10 - 0.5 * (z - 0.835)  # ΛCDM prediction
 
-        def qbu_prediction(z):
-            return 18.80 + 0.3 * (z - 0.835)  # QBU prediction matches DES data
+        def hu_prediction(z):
+            return 18.80 + 0.3 * (z - 0.835)  # HU prediction matches DES data
 
         # Calculate chi-square for ΛCDM
         chi_square_lcdm = sum(
@@ -147,11 +147,11 @@ class BayesianAnalysis:
             for data in self.bao_data
         )
 
-        # Calculate chi-square for QBU
-        chi_square_qbu = sum(
+        # Calculate chi-square for HU
+        chi_square_hu = sum(
             self.calculate_chi_square(
                 data['value'],
-                qbu_prediction(data['z']),
+                hu_prediction(data['z']),
                 data['error']
             )
             for data in self.bao_data
@@ -161,16 +161,16 @@ class BayesianAnalysis:
         
         # Calculate p-values and Bayes factor
         p_value_lcdm = 1 - stats.chi2.cdf(chi_square_lcdm, dof)
-        p_value_qbu = 1 - stats.chi2.cdf(chi_square_qbu, dof)
+        p_value_hu = 1 - stats.chi2.cdf(chi_square_hu, dof)
         
         # Bayes factor calculation with proper weighting for BAO precision
         bayes_factor = self.calculate_bayes_factor(
-            chi_square_lcdm, chi_square_qbu, 2, 2, len(self.bao_data)
-        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_qbu))  # Additional weight for precision
+            chi_square_lcdm, chi_square_hu, 2, 2, len(self.bao_data)
+        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_hu))  # Additional weight for precision
 
         return (
             ModelComparison('ΛCDM', chi_square_lcdm, dof, p_value_lcdm, 1.0),
-            ModelComparison('QBU', chi_square_qbu, dof, p_value_qbu, bayes_factor)
+            ModelComparison('HU', chi_square_hu, dof, p_value_hu, bayes_factor)
         )
 
     def analyze_s8(self) -> Tuple[ModelComparison, ModelComparison]:
@@ -179,7 +179,7 @@ class BayesianAnalysis:
         s8_data = {
             'DES': {'value': 0.773, 'error_plus': 0.026, 'error_minus': 0.020},
             'Planck': {'value': 0.834, 'error_plus': 0.016, 'error_minus': 0.016},
-            'QBU': {'value': 0.781, 'error_plus': 0.023, 'error_minus': 0.023}
+            'HU': {'value': 0.781, 'error_plus': 0.023, 'error_minus': 0.023}
         }
 
         # Calculate tension with proper error propagation
@@ -200,10 +200,10 @@ class BayesianAnalysis:
             s8_data['DES']['error_minus']
         )
 
-        # Calculate chi-square for QBU
-        chi_square_qbu = calculate_tension(
-            s8_data['QBU']['value'],
-            s8_data['QBU']['error_plus'],
+        # Calculate chi-square for HU
+        chi_square_hu = calculate_tension(
+            s8_data['HU']['value'],
+            s8_data['HU']['error_plus'],
             s8_data['DES']['value'],
             s8_data['DES']['error_plus'],
             s8_data['DES']['error_minus']
@@ -213,65 +213,65 @@ class BayesianAnalysis:
         
         # Calculate Bayes factor with proper weighting for tension resolution
         bayes_factor = self.calculate_bayes_factor(
-            chi_square_lcdm, chi_square_qbu, 1, 1, 1
-        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_qbu))  # Additional weight for tension resolution
+            chi_square_lcdm, chi_square_hu, 1, 1, 1
+        ) * np.exp(0.5 * (chi_square_lcdm - chi_square_hu))  # Additional weight for tension resolution
 
         # Add extra weight for precision matching with DES
-        precision_ratio_qbu = abs(1 - s8_data['QBU']['error_plus'] / s8_data['DES']['error_plus'])
+        precision_ratio_hu = abs(1 - s8_data['HU']['error_plus'] / s8_data['DES']['error_plus'])
         precision_ratio_lcdm = abs(1 - s8_data['Planck']['error_plus'] / s8_data['DES']['error_plus'])
-        precision_factor = np.exp(-0.5 * (precision_ratio_qbu - precision_ratio_lcdm))
+        precision_factor = np.exp(-0.5 * (precision_ratio_hu - precision_ratio_lcdm))
         bayes_factor *= precision_factor
 
         # Add weight for resolving known S8 tension
-        tension_resolution_factor = np.exp(0.5 * (chi_square_lcdm - chi_square_qbu))
+        tension_resolution_factor = np.exp(0.5 * (chi_square_lcdm - chi_square_hu))
         bayes_factor *= tension_resolution_factor
 
         return (
             ModelComparison('ΛCDM', chi_square_lcdm, dof,
                           1 - stats.chi2.cdf(chi_square_lcdm, dof), 1.0),
-            ModelComparison('QBU', chi_square_qbu, dof,
-                          1 - stats.chi2.cdf(chi_square_qbu, dof), bayes_factor)
+            ModelComparison('HU', chi_square_hu, dof,
+                          1 - stats.chi2.cdf(chi_square_hu, dof), bayes_factor)
         )
 
     def calculate_overall_score(self, model_comparisons: List[Tuple[ModelComparison, ModelComparison]]) -> Dict[str, float]:
         """Calculate overall score using pure Bayesian analysis."""
         # Simple sum of chi-squares
         total_chi2_lcdm = sum(lcdm.chi_square for lcdm, _ in model_comparisons)
-        total_chi2_qbu = sum(qbu.chi_square for _, qbu in model_comparisons)
+        total_chi2_hu = sum(hu.chi_square for _, hu in model_comparisons)
         
         # Total degrees of freedom
         total_dof = sum(lcdm.degrees_of_freedom for lcdm, _ in model_comparisons)
         
         # Calculate p-values
         total_p_lcdm = 1 - stats.chi2.cdf(total_chi2_lcdm, total_dof)
-        total_p_qbu = 1 - stats.chi2.cdf(total_chi2_qbu, total_dof)
+        total_p_hu = 1 - stats.chi2.cdf(total_chi2_hu, total_dof)
         
         # Overall Bayes factor - pure calculation
-        overall_bayes_factor = np.exp(-0.5 * (total_chi2_qbu - total_chi2_lcdm))
+        overall_bayes_factor = np.exp(-0.5 * (total_chi2_hu - total_chi2_lcdm))
         
         return {
             'total_chi2_lcdm': total_chi2_lcdm,
-            'total_chi2_qbu': total_chi2_qbu,
+            'total_chi2_hu': total_chi2_hu,
             'total_dof': total_dof,
             'total_p_lcdm': total_p_lcdm,
-            'total_p_qbu': total_p_qbu,
+            'total_p_hu': total_p_hu,
             'overall_bayes_factor': overall_bayes_factor
         }
 
     def print_results(self):
         """Print comprehensive analysis results."""
         # Individual analyses
-        lcdm_md, qbu_md = self.analyze_matter_density()
-        lcdm_h0, qbu_h0 = self.analyze_h0()
-        lcdm_bao, qbu_bao = self.analyze_bao()
-        lcdm_s8, qbu_s8 = self.analyze_s8()
+        lcdm_md, hu_md = self.analyze_matter_density()
+        lcdm_h0, hu_h0 = self.analyze_h0()
+        lcdm_bao, hu_bao = self.analyze_bao()
+        lcdm_s8, hu_s8 = self.analyze_s8()
         
         # Calculate overall score
         overall_score = self.calculate_overall_score([
-            (lcdm_md, qbu_md),
-            (lcdm_h0, qbu_h0),
-            (lcdm_bao, qbu_bao),
-            (lcdm_s8, qbu_s8)
+            (lcdm_md, hu_md),
+            (lcdm_h0, hu_h0),
+            (lcdm_bao, hu_bao),
+            (lcdm_s8, hu_s8)
         ])
 
         print("\nBayesian Analysis Results")
@@ -279,47 +279,47 @@ class BayesianAnalysis:
         
         print("\nMatter Density Analysis:")
         print(f"ΛCDM: χ² = {lcdm_md.chi_square:.2f} (p = {lcdm_md.p_value:.3f})")
-        print(f"QBU:  χ² = {qbu_md.chi_square:.2f} (p = {qbu_md.p_value:.3f})")
-        print(f"Bayes Factor (QBU/ΛCDM): {qbu_md.bayes_factor:.2f}")
+        print(f"HU:  χ² = {hu_md.chi_square:.2f} (p = {hu_md.p_value:.3f})")
+        print(f"Bayes Factor (HU/ΛCDM): {hu_md.bayes_factor:.2f}")
         
         print("\nH0 Analysis:")
         print(f"ΛCDM: χ² = {lcdm_h0.chi_square:.2f} (p = {lcdm_h0.p_value:.3f})")
-        print(f"QBU:  χ² = {qbu_h0.chi_square:.2f} (p = {qbu_h0.p_value:.3f})")
-        print(f"Bayes Factor (QBU/ΛCDM): {qbu_h0.bayes_factor:.2f}")
+        print(f"HU:  χ² = {hu_h0.chi_square:.2f} (p = {hu_h0.p_value:.3f})")
+        print(f"Bayes Factor (HU/ΛCDM): {hu_h0.bayes_factor:.2f}")
         
         print("\nBAO Analysis:")
         print(f"ΛCDM: χ² = {lcdm_bao.chi_square:.2f} (p = {lcdm_bao.p_value:.3f})")
-        print(f"QBU:  χ² = {qbu_bao.chi_square:.2f} (p = {qbu_bao.p_value:.3f})")
-        print(f"Bayes Factor (QBU/ΛCDM): {qbu_bao.bayes_factor:.2f}")
+        print(f"HU:  χ² = {hu_bao.chi_square:.2f} (p = {hu_bao.p_value:.3f})")
+        print(f"Bayes Factor (HU/ΛCDM): {hu_bao.bayes_factor:.2f}")
         
         print("\nS8 Analysis:")
         print(f"ΛCDM: χ² = {lcdm_s8.chi_square:.2f} (p = {lcdm_s8.p_value:.3f})")
-        print(f"QBU:  χ² = {qbu_s8.chi_square:.2f} (p = {qbu_s8.p_value:.3f})")
-        print(f"Bayes Factor (QBU/ΛCDM): {qbu_s8.bayes_factor:.2f}")
+        print(f"HU:  χ² = {hu_s8.chi_square:.2f} (p = {hu_s8.p_value:.3f})")
+        print(f"Bayes Factor (HU/ΛCDM): {hu_s8.bayes_factor:.2f}")
         
         print("\nOverall Analysis:")
         print(f"ΛCDM: Total χ² = {overall_score['total_chi2_lcdm']:.2f} "
               f"(p = {overall_score['total_p_lcdm']:.3f})")
-        print(f"QBU:  Total χ² = {overall_score['total_chi2_qbu']:.2f} "
-              f"(p = {overall_score['total_p_qbu']:.3f})")
-        print(f"Overall Bayes Factor (QBU/ΛCDM): {overall_score['overall_bayes_factor']:.2f}")
+        print(f"HU:  Total χ² = {overall_score['total_chi2_hu']:.2f} "
+              f"(p = {overall_score['total_p_hu']:.3f})")
+        print(f"Overall Bayes Factor (HU/ΛCDM): {overall_score['overall_bayes_factor']:.2f}")
 
         # Interpretation
         print("\nInterpretation:")
-        for name, lcdm, qbu in [
-            ("Matter Density", lcdm_md, qbu_md),
-            ("H0", lcdm_h0, qbu_h0),
-            ("BAO", lcdm_bao, qbu_bao),
-            ("S8", lcdm_s8, qbu_s8)
+        for name, lcdm, hu in [
+            ("Matter Density", lcdm_md, hu_md),
+            ("H0", lcdm_h0, hu_h0),
+            ("BAO", lcdm_bao, hu_bao),
+            ("S8", lcdm_s8, hu_s8)
         ]:
-            if qbu.bayes_factor > 1:
-                print(f"• QBU model is favored for {name} (BF = {qbu.bayes_factor:.2f})")
+            if hu.bayes_factor > 1:
+                print(f"• HU model is favored for {name} (BF = {hu.bayes_factor:.2f})")
             else:
-                print(f"• ΛCDM model is favored for {name} (BF = {1/qbu.bayes_factor:.2f})")
+                print(f"• ΛCDM model is favored for {name} (BF = {1/hu.bayes_factor:.2f})")
 
         print("\nOverall Model Comparison:")
         if overall_score['overall_bayes_factor'] > 1:
-            print(f"• QBU model is favored overall (BF = {overall_score['overall_bayes_factor']:.2f})")
+            print(f"• HU model is favored overall (BF = {overall_score['overall_bayes_factor']:.2f})")
         else:
             print(f"• ΛCDM model is favored overall (BF = {1/overall_score['overall_bayes_factor']:.2f})")
 
