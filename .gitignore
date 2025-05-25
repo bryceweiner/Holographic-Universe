@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+string_analysis/data/cmb_map.fits
+string_analysis/data/cmb_map_nside256.npy
+string_analysis/data/COM_PowerSpect_CMB-EE-full_R3.01.txt
+string_analysis/data/COM_PowerSpect_CMB-TE-full_R3.01.txt
+string_analysis/data/COM_PowerSpect_CMB-TT-full_R3.01.txt
