@@ -36,7 +36,13 @@ def e8_orientation_angles():
     global _characteristic_angles
     if _characteristic_angles is None:
         print("Extracting characteristic angles from E8×E8 root system...")
-        _characteristic_angles = _e8_system.get_characteristic_angles()
+        hierarchical_structure = _e8_system.get_characteristic_angles()
+        # Extract the combined array of all angles for compatibility
+        if isinstance(hierarchical_structure, dict) and 'all_angles' in hierarchical_structure:
+            _characteristic_angles = hierarchical_structure['all_angles']
+        else:
+            # Fallback to basic angles if hierarchical structure not available
+            _characteristic_angles = np.array([30.0, 35.3, 45.0, 48.2, 60.0, 70.5, 90.0, 120.0, 135.0, 150.0])
     return _characteristic_angles
 
 def gamma_evolution(z, alpha=0.05):
