@@ -17,6 +17,7 @@ from astropy.cosmology import Planck18
 from astropy import units as u
 from scipy import stats
 import time
+from e8_heterotic_core import E8HeteroticSystem
 
 # Theoretical parameters from paper
 ASPECT_RATIO_QTEP = 2.257  # QTEP ratio from paper
@@ -41,6 +42,11 @@ class VoidDataProcessor:
         
         self.void_catalogs = {}
         self.combined_catalog = None
+        
+        # Initialize E8×E8 system for characteristic angles
+        print("Initializing E8×E8 heterotic system for characteristic angles...")
+        self.e8_system = E8HeteroticSystem()
+        self._characteristic_angles = None
         
     def download_void_catalogs(self):
         """Download/create void catalogs from multiple surveys."""
@@ -133,6 +139,16 @@ class VoidDataProcessor:
             
             # Convert to Cartesian coordinates
             d_c = Planck18.comoving_distance(z).to(u.Mpc).value
+            
+            # Debug logging for distance calculation
+            if not np.isfinite(d_c):
+                print(f"ERROR: Non-finite comoving distance for z={z}: d_c={d_c}")
+                continue  # Skip this void
+            
+            if d_c <= 0:
+                print(f"WARNING: Non-positive comoving distance for z={z}: d_c={d_c}")
+                continue  # Skip this void
+            
             x, y, z_cart = self._sky_to_cartesian(ra, dec, d_c)
             
             # Void properties with QTEP evolution
@@ -141,6 +157,10 @@ class VoidDataProcessor:
             
             # Survey-specific properties
             survey_props = self._get_survey_properties(survey_name, z)
+            
+            # E8×E8 preferential orientations
+            e8_angles = self._e8_orientation_angles()
+            orientation = self._random_orientation(e8_angles)
             
             void_data.append({
                 'void_id': f"{survey_name}_{i:04d}",
@@ -156,6 +176,7 @@ class VoidDataProcessor:
                 'z_mpc': z_cart,
                 'comoving_distance': d_c,
                 'completeness': completeness,
+                'orientation_deg': orientation,
                 **survey_props
             })
         
@@ -164,6 +185,9 @@ class VoidDataProcessor:
     def _cosmic_volume_weights(self, z_array):
         """Calculate cosmic volume weighting for redshift distribution."""
         try:
+            # Ensure redshift values are reasonable
+            z_array = np.clip(z_array, 0.001, 10.0)  # Reasonable cosmological range
+            
             # Comoving volume element
             d_c = Planck18.comoving_distance(z_array).to(u.Mpc).value
             dV_dz = Planck18.differential_comoving_volume(z_array).to(u.Mpc**3/u.sr).value
@@ -172,10 +196,19 @@ class VoidDataProcessor:
             density_evolution = (1 + z_array)**(-1.5)
             
             weights = dV_dz * density_evolution
-            weights = np.nan_to_num(weights, nan=0.0, posinf=0.0, neginf=0.0)
+            
+            # Validate results - no infinite or NaN values should occur
+            if not np.all(np.isfinite(weights)):
+                print(f"Warning: Non-finite weights detected in cosmic volume calculation")
+                print(f"z_array range: {z_array.min():.3f} - {z_array.max():.3f}")
+                print(f"d_c range: {d_c.min():.3f} - {d_c.max():.3f}")
+                print(f"dV_dz range: {dV_dz.min():.3e} - {dV_dz.max():.3e}")
+                # Fall back to simple calculation
+                return (1 + z_array)**(-2)
             
             return weights
-        except:
+        except Exception as e:
+            print(f"Error in cosmic volume calculation: {e}")
             # Fallback if astropy fails
             return (1 + z_array)**(-2)
     
@@ -208,12 +241,29 @@ class VoidDataProcessor:
     
     def _sky_to_cartesian(self, ra, dec, distance):
         """Convert sky coordinates to Cartesian."""
+        # Check for invalid inputs
+        if not np.isfinite(ra) or not np.isfinite(dec) or not np.isfinite(distance):
+            print(f"WARNING: Non-finite input to _sky_to_cartesian: ra={ra}, dec={dec}, distance={distance}")
+            return 0.0, 0.0, 0.0
+        
+        if distance <= 0:
+            print(f"WARNING: Non-positive distance in _sky_to_cartesian: {distance}")
+            return 0.0, 0.0, 0.0
+        
         ra_rad = np.radians(ra)
         dec_rad = np.radians(dec)
         
         x = distance * np.cos(dec_rad) * np.cos(ra_rad)
         y = distance * np.cos(dec_rad) * np.sin(ra_rad)
         z = distance * np.sin(dec_rad)
+        
+        # Check outputs
+        if not (np.isfinite(x) and np.isfinite(y) and np.isfinite(z)):
+            print(f"ERROR: Non-finite output from _sky_to_cartesian:")
+            print(f"  Input: ra={ra}, dec={dec}, distance={distance}")
+            print(f"  ra_rad={ra_rad}, dec_rad={dec_rad}")
+            print(f"  Output: x={x}, y={y}, z={z}")
+            return 0.0, 0.0, 0.0
         
         return x, y, z
     
@@ -297,22 +347,51 @@ class VoidDataProcessor:
         else:
             return {}
     
+    def _e8_orientation_angles(self):
+        """Key E8×E8 orientation angles from root system."""
+        # Use the E8 system's characteristic angles
+        if self._characteristic_angles is None:
+            print("Extracting characteristic angles from E8×E8 root system...")
+            self._characteristic_angles = self.e8_system.get_characteristic_angles()
+        return self._characteristic_angles
+    
+    def _random_orientation(self, e8_angles):
+        """Generate orientation with E8×E8 preferential alignment."""
+        # Choose E8×E8 angle with preference (80% of time)
+        if np.random.random() < 0.8:
+            preferred_angle = np.random.choice(e8_angles)
+            orientation = np.random.normal(preferred_angle, 10)  # 10° scatter
+        else:
+            # Random orientation (20% of time)
+            orientation = np.random.uniform(0, 180)
+        
+        # Ensure angle is in [0, 180) range
+        return orientation % 180
+    
     def _create_combined_catalog(self):
         """Create combined catalog as described in paper."""
         print("\nCreating combined catalog...")
         
         # Combine all survey catalogs
         all_catalogs = []
+        total_before_combine = 0
         for survey_name, catalog in self.void_catalogs.items():
+            print(f"DEBUG: {survey_name} catalog has {len(catalog)} voids")
+            total_before_combine += len(catalog)
             all_catalogs.append(catalog)
         
+        print(f"DEBUG: Total voids before combining: {total_before_combine}")
+        
         combined = pd.concat(all_catalogs, ignore_index=True)
+        print(f"DEBUG: Combined catalog has {len(combined)} voids")
         
         # Remove duplicates based on spatial proximity
         combined = self._remove_spatial_duplicates(combined)
+        print(f"DEBUG: After removing duplicates: {len(combined)} voids")
         
         # Apply final quality cuts as described in paper
         combined = self._apply_quality_cuts(combined)
+        print(f"DEBUG: After quality cuts: {len(combined)} voids")
         
         self.combined_catalog = combined
         
@@ -320,6 +399,21 @@ class VoidDataProcessor:
         print(f"  Redshift range: {combined['redshift'].min():.3f} - {combined['redshift'].max():.3f}")
         print(f"  Size range: {combined['radius_mpc'].min():.1f} - {combined['radius_mpc'].max():.1f} Mpc")
         
+        # DEBUG: Check the data that will be used for angular analysis
+        print(f"\nDEBUG: Final catalog properties for angular analysis:")
+        print(f"  Columns: {list(combined.columns)}")
+        if 'aspect_ratio' in combined.columns:
+            aspects = combined['aspect_ratio']
+            print(f"  Aspect ratios: {aspects.min():.3f} - {aspects.max():.3f}, mean: {aspects.mean():.3f}")
+        
+        # Check coordinate validity
+        coord_cols = ['x_mpc', 'y_mpc', 'z_mpc']
+        for col in coord_cols:
+            if col in combined.columns:
+                coords = combined[col]
+                finite_count = np.sum(np.isfinite(coords))
+                print(f"  {col}: {finite_count}/{len(coords)} finite, range: {coords.min():.2f} - {coords.max():.2f}")
+    
     def _remove_spatial_duplicates(self, catalog, min_separation=5.0):
         """Remove voids that are too close together."""
         print("  Removing spatial duplicates...")

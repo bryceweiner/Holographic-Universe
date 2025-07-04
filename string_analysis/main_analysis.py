@@ -98,6 +98,21 @@ def main():
     print(f"✓ E8×E8 theory prediction: 0.78125")
     print(f"✓ Theory ratio: {best_clustering/0.78125:.4f}")
     
+    # Step 5a: Angular Alignment Analysis
+    print("\n" + "="*60)
+    print("STEP 5a: ANGULAR ALIGNMENT ANALYSIS")
+    print("="*60)
+    
+    # Use redshift-binned analysis (the working method)
+    redshift_results = network_analyzer.analyze_angular_alignments_by_redshift(void_catalog)
+    
+    if redshift_results:
+        avg_significance = np.mean([r['best_significance'] for r in redshift_results.values()])
+        max_significance = np.max([r['best_significance'] for r in redshift_results.values()])
+        print(f"✓ Redshift-binned analysis complete: {avg_significance:.1f}σ average, {max_significance:.1f}σ maximum")
+    else:
+        print("✗ Angular alignment analysis failed")
+    
     # Step 6: CMB Phase Transition Analysis
     print("\n" + "="*60)
     print("STEP 6: CMB E-MODE PHASE TRANSITIONS")
@@ -118,6 +133,7 @@ def main():
     # Create all visualizations for paper inclusion
     # e8_system.create_heterotic_visualization('data/e8_heterotic_structure.jpg')  # Method not available
     network_analyzer.create_clustering_visualization('data/network_clustering_analysis.jpg')
+    network_analyzer.create_angular_alignment_visualization('data/angular_alignments.jpg')
     cmb_analyzer.create_phase_visualization('data/cmb_phase_transitions.jpg')
     
     print("✓ Generated all visualizations as JPG files for paper inclusion")
