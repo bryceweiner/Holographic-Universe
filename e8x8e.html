@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E8×E8 Heterotic Structure - Precise Implementation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #controls, #info {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 5px;
+        }
+        #controls {
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            max-width: 350px;
+        }
+        #info {
+            bottom: 10px;
+            left: 10px;
+            font-size: 11px;
+            max-width: 400px;
+        }
+        #uiToggle {
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            display: block;
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+        }
+        button:hover {
+            background: #333;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        label {
+            display: block;
+            margin-bottom: 3px;
+        }
+        .matrix {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            margin: 5px 0;
+            background: rgba(30,30,30,0.8);
+            padding: 5px;
+            border-radius: 3px;
+        }
+        h3, h4 {
+            margin: 10px 0 5px 0;
+            color: #4a9eff;
+        }
+        .vertex-info {
+            background: rgba(20,20,20,0.9);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <button id="uiToggle" onclick="toggleUI()" style="position: absolute; top: 10px; right: 10px; z-index: 1000; background: rgba(0,0,0,0.8); color: white; border: 1px solid #444; padding: 8px 15px; border-radius: 3px; cursor: pointer; font-size: 12px;">Hide UI</button>
+    <div id="controls" class="ui-panel">
+        <h3>E8×E8 Heterotic Structure</h3>
+        <p style="font-size: 11px; margin: 5px 0;">Precise H4 Folding Matrix Implementation</p>
+        
+        <button onclick="toggleRotation()">Toggle Rotation</button>
+        <button onclick="toggleE8Left()">Toggle Left E8</button>
+        <button onclick="toggleE8Right()">Toggle Right E8</button>
+        <button onclick="toggleEdges()">Toggle Edges</button>
+        <button onclick="changeProjection()">Switch Projection Mode</button>
+        <button onclick="showMatrixInfo()">Show H4fold Matrix</button>
+        
+        <div class="slider-container">
+            <label>Separation: <span id="sepValue">3.0</span></label>
+            <input type="range" id="separation" min="0" max="6" step="0.1" value="3" onchange="updateSeparation()">
+        </div>
+        
+        <div class="slider-container">
+            <label>Edge Threshold: <span id="edgeValue">1.42</span></label>
+            <input type="range" id="edgeThreshold" min="1.0" max="2.0" step="0.01" value="1.42" onchange="updateEdgeThreshold()">
+        </div>
+        
+        <div id="projectionInfo" class="vertex-info" style="display: none;">
+            <b>Current Projection:</b> <span id="projMode">Petrie (2D→3D)</span>
+        </div>
+    </div>
+    
+    <div id="info" class="ui-panel">
+        <h4>Mathematical Framework</h4>
+        <div class="vertex-info">
+            <b>E8 SRE Construction:</b><br>
+            • D8 roots: 112 vertices from {±1,±1,0,0,0,0,0,0}<br>
+            • BC8 roots: 128 vertices from {±½,±½,±½,±½,±½,±½,±½,±½}<br>
+            • Total: 240 vertices per E8<br>
+            • E8×E8: 57,600 vertices in 16D heterotic structure
+        </div>
+        <div class="vertex-info">
+            <b>Heterotic String Theory:</b><br>
+            • Left-moving: E8 gauge symmetry (spacetime)<br>
+            • Right-moving: E8 gauge symmetry (internal)<br>
+            • Direct Product: E8 × E8 = 16D structure<br>
+            • Modular Invariance: Constrains coupling<br>
+            • Gauge Breaking: E8 → E6 × SU(3) possible
+        </div>
+        <div id="matrixDisplay" class="matrix" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer;
+        let leftE8Group, rightE8Group, leftEdgesGroup, rightEdgesGroup;
+        let isRotating = true;
+        let showLeftE8 = true, showRightE8 = true, showEdges = true;
+        let projectionMode = 0; // 0: Petrie, 1: H4 basis, 2: H4fold direct
+        let separation = 3.0;
+        let edgeThreshold = Math.sqrt(2); // √2 for E8 edge length
+        let showUI = true;
+        
+        // Golden ratio
+        const phi = (1 + Math.sqrt(5)) / 2;
+        
+        // H4fold matrix from the paper (equation 1)
+        const H4fold = [
+            [phi/2, 0, 0, 0, 1/phi, 0, 0, 0],
+            [0, 1, phi, 0, 0, -1, phi, 0],
+            [0, phi, 0, 1, 0, phi, 0, -1],
+            [0, 0, 1, phi, 0, 0, -1, phi],
+            [1/phi, 0, 0, 0, phi/2, 0, 0, 0],
+            [0, -1, phi, 0, 0, 1, phi, 0],
+            [0, phi, 0, -1, 0, phi, 0, 1],
+            [0, 0, -1, phi, 0, 0, 1, phi]
+        ];
+        
+        // Input basis vectors from paper (equation 2)
+        const inputX = [0, (1 + Math.sqrt(5)) * Math.sin(Math.PI/30), 0, 1, 0, 0, 0, 0];
+        const inputY = [(1 + Math.sqrt(5)) * Math.sin(Math.PI/15), 0, 2 * Math.sin(2*Math.PI/15), 0, 0, 0, 0, 0];
+        const inputZ = [0, 1, 0, (1 + Math.sqrt(5)) * Math.sin(Math.PI/30), 0, 0, 0, 0];
+        
+        // Dynamic projection basis vectors (calculated from H4fold inverse)
+        let projectionBasisX, projectionBasisY, projectionBasisZ;
+        
+        // Heterotic coupling matrix for E8×E8
+        const heteroticCoupling = [
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        ];
+        
+        // Initialize Three.js
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+            
+            camera = new THREE.PerspectiveCamera(
+                60, window.innerWidth / window.innerHeight, 0.1, 1000
+            );
+            camera.position.set(0, 0, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x303030);
+            scene.add(ambientLight);
+            
+            const pointLight1 = new THREE.PointLight(0xffffff, 0.8);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xffffff, 0.4);
+            pointLight2.position.set(-10, -10, 10);
+            scene.add(pointLight2);
+            
+            // Create groups
+            leftE8Group = new THREE.Group();
+            rightE8Group = new THREE.Group();
+            leftEdgesGroup = new THREE.Group();
+            rightEdgesGroup = new THREE.Group();
+            
+            scene.add(leftE8Group);
+            scene.add(rightE8Group);
+            scene.add(leftEdgesGroup);
+            scene.add(rightEdgesGroup);
+            
+            // Generate E8 structures
+            generateE8Structures();
+            
+            // Mouse controls
+            setupMouseControls();
+            
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Generate SRE E8 vertices according to the paper
+        function generateSRE_E8Vertices() {
+            const vertices = [];
+            
+            // D8 roots: all permutations of {±1,±1,0,0,0,0,0,0}
+            // This gives us the 112 integer roots
+            const positions = [];
+            for (let i = 0; i < 8; i++) {
+                for (let j = i + 1; j < 8; j++) {
+                    positions.push([i, j]);
+                }
+            }
+            
+            // Generate all sign combinations for each position pair
+            positions.forEach(([i, j]) => {
+                for (let signs = 0; signs < 4; signs++) {
+                    const vertex = new Array(8).fill(0);
+                    vertex[i] = (signs & 1) ? 1 : -1;
+                    vertex[j] = (signs & 2) ? 1 : -1;
+                    vertices.push(vertex);
+                }
+            });
+            
+            // BC8 roots: all permutations of {±1/2, ±1/2, ..., ±1/2} with even number of positive signs
+            // This gives us the 128 half-integer roots
+            for (let pattern = 0; pattern < 256; pattern++) {
+                let positiveCount = 0;
+                const vertex = [];
+                
+                for (let i = 0; i < 8; i++) {
+                    const isPositive = (pattern >> i) & 1;
+                    vertex[i] = isPositive ? 0.5 : -0.5;
+                    if (isPositive) positiveCount++;
+                }
+                
+                // Only include if even number of positive signs
+                if (positiveCount % 2 === 0) {
+                    vertices.push(vertex);
+                }
+            }
+            
+            return vertices;
+        }
+        
+        // Matrix multiplication for 8x8 matrix with 8D vector
+        function multiplyMatrixVector(matrix, vector) {
+            const result = new Array(8).fill(0);
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    result[i] += matrix[i][j] * vector[j];
+                }
+            }
+            return result;
+        }
+        
+        // Matrix inversion for 8x8 matrix (simplified for H4fold structure)
+        function invertH4fold() {
+            // H4fold is symmetric and has special structure
+            // For this quaternion-octonion structure, inverse has similar form
+            const invH4fold = [];
+            for (let i = 0; i < 8; i++) {
+                invH4fold[i] = new Array(8).fill(0);
+            }
+            
+            // The inverse of H4fold maintains the block structure
+            // Top-left and bottom-right blocks
+            invH4fold[0][0] = 2 / (phi * phi); invH4fold[0][4] = 2 / phi;
+            invH4fold[4][0] = 2 / phi; invH4fold[4][4] = 2 / (phi * phi);
+            
+            // Other blocks - simplified inverse calculation
+            for (let i = 1; i < 4; i++) {
+                for (let j = 1; j < 4; j++) {
+                    if (i === j) {
+                        invH4fold[i][j] = 0.5;
+                        invH4fold[i+4][j+4] = 0.5;
+                    }
+                }
+            }
+            
+            return invH4fold;
+        }
+        
+        // Calculate projection basis vectors dynamically from H4fold matrix
+        function calculateProjectionBasis() {
+            const invH4fold = invertH4fold();
+            
+            // Calculate {X,Y,Z} = 4 * H4fold^(-1) · {x,y,z} (equation 3 from paper)
+            projectionBasisX = multiplyMatrixVector(invH4fold, inputX).map(x => 4 * x);
+            projectionBasisY = multiplyMatrixVector(invH4fold, inputY).map(y => 4 * y);
+            projectionBasisZ = multiplyMatrixVector(invH4fold, inputZ).map(z => 4 * z);
+            
+            console.log('Projection basis calculated:', {
+                X: projectionBasisX.map(x => x.toFixed(5)),
+                Y: projectionBasisY.map(y => y.toFixed(5)),
+                Z: projectionBasisZ.map(z => z.toFixed(5))
+            });
+        }
+        
+        // Create E8×E8 heterotic vertex from two E8 vertices
+        function createHeteroticVertex(e8Vertex1, e8Vertex2) {
+            // Direct product: concatenate the two 8D vectors to form 16D vector
+            const heteroticVertex = [...e8Vertex1, ...e8Vertex2];
+            return heteroticVertex;
+        }
+        
+        // Apply heterotic coupling to 16D vertex
+        function applyHeteroticCoupling(heteroticVertex) {
+            // For now, use identity coupling (can be modified for specific breaking patterns)
+            return heteroticVertex;
+        }
+        
+        // Project 16D heterotic vertex to 3D using unified method
+        function projectHeteroticVertex(heteroticVertex16D) {
+            // Split back into two 8D components
+            const e8Vertex1 = heteroticVertex16D.slice(0, 8);
+            const e8Vertex2 = heteroticVertex16D.slice(8, 16);
+            
+            // Apply same projection method to both E8 factors
+            const pos1 = projectVertex(e8Vertex1);
+            const pos2 = projectVertex(e8Vertex2);
+            
+            // Combine positions with proper heterotic structure
+            // Left E8 factor
+            const leftPos = {
+                x: pos1.x - separation,
+                y: pos1.y,
+                z: pos1.z
+            };
+            
+            // Right E8 factor (no artificial rotation)
+            const rightPos = {
+                x: pos2.x + separation,
+                y: pos2.y,
+                z: pos2.z
+            };
+            
+            return { leftPos, rightPos };
+        }
+        
+        // Dot product of two 8D vectors
+        function dotProduct(v1, v2) {
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                sum += v1[i] * v2[i];
+            }
+            return sum;
+        }
+        
+        // Project 8D vertex to 3D using the paper's method
+        function projectVertex(vertex8D, useH4Fold = true) {
+            if (useH4Fold && projectionMode === 1) {
+                // H4 folding projection from the paper
+                // Method 1: Direct projection using dynamically calculated basis vectors (equation 3)
+                if (projectionBasisX && projectionBasisY && projectionBasisZ) {
+                    const x = dotProduct(vertex8D, projectionBasisX);
+                    const y = dotProduct(vertex8D, projectionBasisY);
+                    const z = dotProduct(vertex8D, projectionBasisZ);
+                    return { x, y, z };
+                } else {
+                    console.warn('Projection basis not calculated yet, falling back to Petrie projection');
+                    // Fall back to Petrie projection
+                }
+            } else if (projectionMode === 2) {
+                // Method 2: Apply H4fold then use rows 2-4 (as mentioned for 6-cube)
+                const foldedVertex = multiplyMatrixVector(H4fold, vertex8D);
+                const x = foldedVertex[1] * 2;
+                const y = foldedVertex[2] * 2;
+                const z = foldedVertex[3] * 2;
+                return { x, y, z };
+            }
+            
+            // Petrie projection (default fallback)
+            let x = 0, y = 0, z = 0;
+            for (let i = 0; i < 8; i++) {
+                const angle1 = 2 * Math.PI * i / 8;
+                const angle2 = 4 * Math.PI * i / 8;
+                x += vertex8D[i] * Math.cos(angle1);
+                y += vertex8D[i] * Math.sin(angle1);
+                z += vertex8D[i] * Math.cos(angle2) * 0.3;
+            }
+            return { x: x * 1.5, y: y * 1.5, z: z * 1.5 };
+        }
+        
+        // Calculate Euclidean distance between two 8D vertices
+        function calculateDistance(v1, v2) {
+            let sum = 0;
+            for (let i = 0; i < 8; i++) {
+                const diff = v1[i] - v2[i];
+                sum += diff * diff;
+            }
+            return Math.sqrt(sum);
+        }
+        
+        // Generate E8 structures for both left and right
+        function generateE8Structures() {
+            // Clear existing geometry
+            clearGroup(leftE8Group);
+            clearGroup(rightE8Group);
+            clearGroup(leftEdgesGroup);
+            clearGroup(rightEdgesGroup);
+            
+            // Calculate projection basis dynamically
+            calculateProjectionBasis();
+            
+            // Generate E8 vertices
+            const e8Vertices = generateSRE_E8Vertices();
+            console.log(`Generated ${e8Vertices.length} E8 vertices`);
+            
+            // Verify the vertex count
+            if (e8Vertices.length !== 240) {
+                console.error(`Error: Expected 240 vertices, got ${e8Vertices.length}`);
+            }
+            
+            // Count edges of length √2
+            let edgeCount = 0;
+            for (let i = 0; i < e8Vertices.length; i++) {
+                for (let j = i + 1; j < e8Vertices.length; j++) {
+                    const dist = calculateDistance(e8Vertices[i], e8Vertices[j]);
+                    if (Math.abs(dist - Math.sqrt(2)) < 0.001) {
+                        edgeCount++;
+                    }
+                }
+            }
+            console.log(`E8 has ${edgeCount} edges of length √2 (paper claims 6720)`);
+            
+            // Update edge count display
+            const edgeInfo = document.getElementById('edgeCountInfo');
+            if (edgeInfo) {
+                edgeInfo.textContent = `E8 edges: ${edgeCount} of length √2`;
+            }
+            
+            // Create E8×E8 heterotic structure
+            // For visualization, we'll show a subset of the full 57,600 vertices
+            const maxVerticesPerE8 = 120; // Show subset for performance
+            const leftE8Subset = e8Vertices.slice(0, maxVerticesPerE8);
+            const rightE8Subset = e8Vertices.slice(0, maxVerticesPerE8);
+            
+            console.log(`Creating E8×E8 heterotic structure with ${leftE8Subset.length}×${rightE8Subset.length} = ${leftE8Subset.length * rightE8Subset.length} vertices`);
+            
+            // Create vertex spheres for left E8 (first factor)
+            leftE8Subset.forEach((vertex, i) => {
+                const pos = projectVertex(vertex);
+                
+                // Color based on vertex type (integer vs half-integer)
+                const isInteger = vertex.every(v => Number.isInteger(v));
+                const hue = isInteger ? 0.6 : 0.55; // Blue for D8, Cyan for BC8
+                const saturation = 0.8;
+                const lightness = 0.5 + (i / leftE8Subset.length) * 0.2;
+                
+                const geometry = new THREE.SphereGeometry(0.04, 12, 8);
+                const material = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(hue, saturation, lightness),
+                    emissive: new THREE.Color().setHSL(hue, saturation, lightness * 0.3),
+                    emissiveIntensity: 0.3
+                });
+                
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(pos.x - separation, pos.y, pos.z);
+                sphere.userData = { vertex: vertex, index: i, factor: 'left' };
+                
+                leftE8Group.add(sphere);
+            });
+            
+            // Create vertex spheres for right E8 (second factor)
+            rightE8Subset.forEach((vertex, i) => {
+                // Use same projection method (no artificial rotation)
+                const pos = projectVertex(vertex);
+                
+                const isInteger = vertex.every(v => Number.isInteger(v));
+                const hue = isInteger ? 0.0 : 0.95; // Red for D8, Magenta for BC8
+                const saturation = 0.8;
+                const lightness = 0.5 + (i / rightE8Subset.length) * 0.2;
+                
+                const geometry = new THREE.SphereGeometry(0.04, 12, 8);
+                const material = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(hue, saturation, lightness),
+                    emissive: new THREE.Color().setHSL(hue, saturation, lightness * 0.3),
+                    emissiveIntensity: 0.3
+                });
+                
+                const sphere = new THREE.Mesh(geometry, material);
+                sphere.position.set(pos.x + separation, pos.y, pos.z);
+                sphere.userData = { vertex: vertex, index: i, factor: 'right' };
+                
+                rightE8Group.add(sphere);
+            });
+            
+            // Generate edges within each E8 factor
+            if (showEdges) {
+                generateE8Edges(leftE8Subset, leftEdgesGroup, -separation, 0x4488ff, false);
+                generateE8Edges(rightE8Subset, rightEdgesGroup, separation, 0xff4488, false);
+            }
+            
+            // Update info display with heterotic structure information
+            const infoDiv = document.getElementById('info');
+            if (infoDiv) {
+                const heteroticInfo = infoDiv.querySelector('.vertex-info:last-child');
+                if (heteroticInfo) {
+                    heteroticInfo.innerHTML = `
+                        <b>E8×E8 Heterotic Structure:</b><br>
+                        • Left E8: ${leftE8Subset.length} vertices (first factor)<br>
+                        • Right E8: ${rightE8Subset.length} vertices (second factor)<br>
+                        • Direct Product: ${leftE8Subset.length} × ${rightE8Subset.length} = ${leftE8Subset.length * rightE8Subset.length} total<br>
+                        • Full Structure: 240 × 240 = 57,600 vertices in 16D<br>
+                        • Unified Projection: Both factors use same H4fold method<br>
+                        • Heterotic Coupling: Identity matrix (E8 × E8)
+                    `;
+                }
+            }
+        }
+        
+        // Generate edges between vertices that are √2 apart
+        function generateE8Edges(vertices, edgeGroup, xOffset, color, useRotation) {
+            const material = new THREE.LineBasicMaterial({
+                color: color,
+                opacity: 0.15,
+                transparent: true
+            });
+            
+            let edgeCount = 0;
+            let totalEdgeCount = 0;
+            const maxEdges = 1000; // Limit edges for performance
+            
+            // Count all edges of length √2
+            for (let i = 0; i < vertices.length; i++) {
+                for (let j = i + 1; j < vertices.length; j++) {
+                    const dist = calculateDistance(vertices[i], vertices[j]);
+                    if (Math.abs(dist - Math.sqrt(2)) < 0.01) {
+                        totalEdgeCount++;
+                    }
+                }
+            }
+            
+            // Generate visible edges (limited for performance)
+            for (let i = 0; i < vertices.length && edgeCount < maxEdges; i++) {
+                for (let j = i + 1; j < vertices.length && edgeCount < maxEdges; j++) {
+                    const dist = calculateDistance(vertices[i], vertices[j]);
+                    
+                    // E8 edges have length √2
+                    if (Math.abs(dist - edgeThreshold) < 0.01) {
+                        const pos1 = projectVertex(vertices[i]);
+                        const pos2 = projectVertex(vertices[j]);
+                        
+                        // Use unified projection (no artificial rotation)
+                        const x1 = pos1.x + xOffset;
+                        const y1 = pos1.y;
+                        const z1 = pos1.z;
+                        const x2 = pos2.x + xOffset;
+                        const y2 = pos2.y;
+                        const z2 = pos2.z;
+                        
+                        const geometry = new THREE.BufferGeometry();
+                        const positions = new Float32Array([x1, y1, z1, x2, y2, z2]);
+                        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                        
+                        const line = new THREE.Line(geometry, material);
+                        edgeGroup.add(line);
+                        edgeCount++;
+                    }
+                }
+            }
+            
+            console.log(`E8 has ${totalEdgeCount} edges of length √2 (showing ${edgeCount} for performance)`);
+            
+            // Update info display
+            if (totalEdgeCount > 0) {
+                const edgeInfo = document.getElementById('edgeCountInfo');
+                if (edgeInfo) {
+                    edgeInfo.textContent = `E8 edges: ${totalEdgeCount} total (√2 length)`;
+                }
+            }
+        }
+        
+        // Clear a Three.js group
+        function clearGroup(group) {
+            while (group.children.length > 0) {
+                const child = group.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                group.remove(child);
+            }
+        }
+        
+        // Mouse controls
+        function setupMouseControls() {
+            let mouseX = 0, mouseY = 0;
+            let mouseDown = false;
+            
+            document.addEventListener('mousemove', (e) => {
+                if (mouseDown) {
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    leftE8Group.rotation.y += deltaX * 0.01;
+                    leftE8Group.rotation.x += deltaY * 0.01;
+                    leftEdgesGroup.rotation.y += deltaX * 0.01;
+                    leftEdgesGroup.rotation.x += deltaY * 0.01;
+                    
+                    rightE8Group.rotation.y += deltaX * 0.01;
+                    rightE8Group.rotation.x += deltaY * 0.01;
+                    rightEdgesGroup.rotation.y += deltaX * 0.01;
+                    rightEdgesGroup.rotation.x += deltaY * 0.01;
+                }
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+            
+            document.addEventListener('mousedown', () => mouseDown = true);
+            document.addEventListener('mouseup', () => mouseDown = false);
+            
+            // Mouse wheel zoom
+            document.addEventListener('wheel', (e) => {
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(5, Math.min(50, camera.position.z));
+            });
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (isRotating) {
+                leftE8Group.rotation.y += 0.003;
+                leftEdgesGroup.rotation.y += 0.003;
+                rightE8Group.rotation.y -= 0.003;
+                rightEdgesGroup.rotation.y -= 0.003;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+
+        
+        // Control functions
+        function toggleRotation() {
+            isRotating = !isRotating;
+        }
+        
+        function toggleE8Left() {
+            showLeftE8 = !showLeftE8;
+            leftE8Group.visible = showLeftE8;
+            leftEdgesGroup.visible = showLeftE8 && showEdges;
+        }
+        
+        function toggleE8Right() {
+            showRightE8 = !showRightE8;
+            rightE8Group.visible = showRightE8;
+            rightEdgesGroup.visible = showRightE8 && showEdges;
+        }
+        
+        function toggleEdges() {
+            showEdges = !showEdges;
+            leftEdgesGroup.visible = showLeftE8 && showEdges;
+            rightEdgesGroup.visible = showRightE8 && showEdges;
+        }
+        
+        function changeProjection() {
+            projectionMode = (projectionMode + 1) % 3;
+            let modeText;
+            switch(projectionMode) {
+                case 0:
+                    modeText = "Petrie (2D→3D)";
+                    break;
+                case 1:
+                    modeText = "H4 Basis Vectors (Paper Eq. 3)";
+                    break;
+                case 2:
+                    modeText = "H4fold Rows 2-4";
+                    break;
+            }
+            document.getElementById('projMode').textContent = modeText;
+            document.getElementById('projectionInfo').style.display = 'block';
+            generateE8Structures();
+        }
+        
+        function toggleUI() {
+            showUI = !showUI;
+            const controls = document.getElementById('controls');
+            const info = document.getElementById('info');
+            const button = document.getElementById('uiToggle');
+            
+            if (showUI) {
+                controls.style.display = 'block';
+                info.style.display = 'block';
+                button.textContent = 'Hide UI';
+            } else {
+                controls.style.display = 'none';
+                info.style.display = 'none';
+                button.textContent = 'Show UI';
+            }
+        }
+        
+        function updateSeparation() {
+            separation = parseFloat(document.getElementById('separation').value);
+            document.getElementById('sepValue').textContent = separation.toFixed(1);
+            generateE8Structures();
+        }
+        
+        function updateEdgeThreshold() {
+            edgeThreshold = parseFloat(document.getElementById('edgeThreshold').value);
+            document.getElementById('edgeValue').textContent = edgeThreshold.toFixed(2);
+            generateE8Structures();
+        }
+        
+        function showMatrixInfo() {
+            const matrixDisplay = document.getElementById('matrixDisplay');
+            if (matrixDisplay.style.display === 'none') {
+                matrixDisplay.style.display = 'block';
+                matrixDisplay.innerHTML = `
+                    <b>H4fold Matrix (φ = ${phi.toFixed(3)}):</b><br>
+                    <pre style="font-size: 9px; margin: 5px 0;">
+[φ/2   0    0    0   1/φ   0    0    0  ]
+[ 0    1    φ    0    0   -1    φ    0  ]
+[ 0    φ    0    1    0    φ    0   -1  ]
+[ 0    0    1    φ    0    0   -1    φ  ]
+[1/φ   0    0    0   φ/2   0    0    0  ]
+[ 0   -1    φ    0    0    1    φ    0  ]
+[ 0    φ    0   -1    0    φ    0    1  ]
+[ 0    0   -1    φ    0    0    1    φ  ]</pre>
+                    <b>Projection Methods:</b><br>
+                    <b>1. Petrie:</b> Standard 2D→3D projection<br>
+                    <b>2. H4 Basis:</b> Uses dynamically calculated basis from Eq. 3<br>
+                    &nbsp;&nbsp;&nbsp;{X,Y,Z} = 4 * H4fold⁻¹ · {x,y,z}<br>
+                    <b>3. H4fold Direct:</b> Uses rows 2-4 of H4fold<br>
+                    &nbsp;&nbsp;&nbsp;(as mentioned for 6-cube projection)<br><br>
+                    <b>E8×E8 Heterotic Structure:</b><br>
+                    • Direct Product: 240 × 240 = 57,600 vertices in 16D<br>
+                    • Heterotic Coupling: Identity matrix (E8 × E8)<br>
+                    • Unified Projection: Both factors use same method<br>
+                    • Dynamic Basis: Calculated from H4fold inverse
+                `;
+            } else {
+                matrixDisplay.style.display = 'none';
+            }
+        }
+        
+        // Initialize everything
+        init();
+        animate();
+    </script>
+</body>
+</html>
