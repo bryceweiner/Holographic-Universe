@@ -103,8 +103,8 @@
             <input type="range" id="separation" min="0" max="6" step="0.1" value="3" onchange="updateSeparation()">
         </div>
         
-        <div id="projectionInfo" class="vertex-info" style="display: none;">
-            <b>Current Projection:</b> <span id="projMode">Petrie (2D→3D)</span>
+        <div id="projectionInfo" class="vertex-info" style="display: block;">
+            <b>Current Projection:</b> <span id="projMode">H4fold Rows 2-4</span>
         </div>
     </div>
     
@@ -134,7 +134,7 @@
         let e8e8Group, leftE8Group, rightE8Group, leftEdgesGroup, rightEdgesGroup, heteroticEdgesGroup;
         let isRotating = true;
         let showLeftE8 = true, showRightE8 = true, showEdges = true;
-        let projectionMode = 0; // 0: Petrie, 1: H4 basis, 2: H4fold direct
+        let projectionMode = 2; // 0: Petrie, 1: H4 basis, 2: H4fold direct
         let separation = 3.0;
         let showUI = true;
         
