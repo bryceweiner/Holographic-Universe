@@ -103,11 +103,6 @@
             <input type="range" id="separation" min="0" max="6" step="0.1" value="3" onchange="updateSeparation()">
         </div>
         
-        <div class="slider-container">
-            <label>Edge Threshold: <span id="edgeValue">1.42</span></label>
-            <input type="range" id="edgeThreshold" min="1.0" max="2.0" step="0.01" value="1.42" onchange="updateEdgeThreshold()">
-        </div>
-        
         <div id="projectionInfo" class="vertex-info" style="display: none;">
             <b>Current Projection:</b> <span id="projMode">Petrie (2D→3D)</span>
         </div>
@@ -136,12 +131,11 @@
     <script>
         // Global variables
         let scene, camera, renderer;
-        let leftE8Group, rightE8Group, leftEdgesGroup, rightEdgesGroup;
+        let e8e8Group, leftE8Group, rightE8Group, leftEdgesGroup, rightEdgesGroup, heteroticEdgesGroup;
         let isRotating = true;
         let showLeftE8 = true, showRightE8 = true, showEdges = true;
         let projectionMode = 0; // 0: Petrie, 1: H4 basis, 2: H4fold direct
         let separation = 3.0;
-        let edgeThreshold = Math.sqrt(2); // √2 for E8 edge length
         let showUI = true;
         
         // Golden ratio
@@ -214,15 +208,20 @@
             scene.add(pointLight2);
             
             // Create groups
+            e8e8Group = new THREE.Group();
+            scene.add(e8e8Group);
+
             leftE8Group = new THREE.Group();
             rightE8Group = new THREE.Group();
             leftEdgesGroup = new THREE.Group();
             rightEdgesGroup = new THREE.Group();
+            heteroticEdgesGroup = new THREE.Group();
             
-            scene.add(leftE8Group);
-            scene.add(rightE8Group);
-            scene.add(leftEdgesGroup);
-            scene.add(rightEdgesGroup);
+            e8e8Group.add(leftE8Group);
+            e8e8Group.add(rightE8Group);
+            e8e8Group.add(leftEdgesGroup);
+            e8e8Group.add(rightEdgesGroup);
+            e8e8Group.add(heteroticEdgesGroup);
             
             // Generate E8 structures
             generateE8Structures();
@@ -433,6 +432,7 @@
             clearGroup(rightE8Group);
             clearGroup(leftEdgesGroup);
             clearGroup(rightEdgesGroup);
+            clearGroup(heteroticEdgesGroup);
             
             // Calculate projection basis dynamically
             calculateProjectionBasis();
@@ -465,10 +465,8 @@
             }
             
             // Create E8×E8 heterotic structure
-            // For visualization, we'll show a subset of the full 57,600 vertices
-            const maxVerticesPerE8 = 120; // Show subset for performance
-            const leftE8Subset = e8Vertices.slice(0, maxVerticesPerE8);
-            const rightE8Subset = e8Vertices.slice(0, maxVerticesPerE8);
+            const leftE8Subset = e8Vertices;
+            const rightE8Subset = e8Vertices;
             
             console.log(`Creating E8×E8 heterotic structure with ${leftE8Subset.length}×${rightE8Subset.length} = ${leftE8Subset.length * rightE8Subset.length} vertices`);
             
@@ -525,6 +523,33 @@
                 generateE8Edges(leftE8Subset, leftEdgesGroup, -separation, 0x4488ff, false);
                 generateE8Edges(rightE8Subset, rightEdgesGroup, separation, 0xff4488, false);
             }
+
+            // Generate heterotic edges between corresponding vertices
+            if (showEdges) {
+                const heteroticMaterial = new THREE.LineBasicMaterial({
+                    color: 0xffff00, // Yellow for coupling
+                    opacity: 0.3,
+                    transparent: true
+                });
+
+                // Ensure we have same number of vertices on both sides
+                if (leftE8Group.children.length === rightE8Group.children.length) {
+                    for (let i = 0; i < leftE8Group.children.length; i++) {
+                        const leftSphere = leftE8Group.children[i];
+                        const rightSphere = rightE8Group.children[i];
+
+                        const geometry = new THREE.BufferGeometry();
+                        const positions = new Float32Array([
+                            leftSphere.position.x, leftSphere.position.y, leftSphere.position.z,
+                            rightSphere.position.x, rightSphere.position.y, rightSphere.position.z
+                        ]);
+                        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+                        const line = new THREE.Line(geometry, heteroticMaterial);
+                        heteroticEdgesGroup.add(line);
+                    }
+                }
+            }
             
             // Update info display with heterotic structure information
             const infoDiv = document.getElementById('info');
@@ -553,26 +578,13 @@
             });
             
             let edgeCount = 0;
-            let totalEdgeCount = 0;
-            const maxEdges = 1000; // Limit edges for performance
             
-            // Count all edges of length √2
             for (let i = 0; i < vertices.length; i++) {
                 for (let j = i + 1; j < vertices.length; j++) {
                     const dist = calculateDistance(vertices[i], vertices[j]);
-                    if (Math.abs(dist - Math.sqrt(2)) < 0.01) {
-                        totalEdgeCount++;
-                    }
-                }
-            }
-            
-            // Generate visible edges (limited for performance)
-            for (let i = 0; i < vertices.length && edgeCount < maxEdges; i++) {
-                for (let j = i + 1; j < vertices.length && edgeCount < maxEdges; j++) {
-                    const dist = calculateDistance(vertices[i], vertices[j]);
                     
                     // E8 edges have length √2
-                    if (Math.abs(dist - edgeThreshold) < 0.01) {
+                    if (Math.abs(dist - Math.sqrt(2)) < 0.01) {
                         const pos1 = projectVertex(vertices[i]);
                         const pos2 = projectVertex(vertices[j]);
                         
@@ -595,13 +607,13 @@
                 }
             }
             
-            console.log(`E8 has ${totalEdgeCount} edges of length √2 (showing ${edgeCount} for performance)`);
+            console.log(`E8 has ${edgeCount} edges of length √2`);
             
             // Update info display
-            if (totalEdgeCount > 0) {
+            if (edgeCount > 0) {
                 const edgeInfo = document.getElementById('edgeCountInfo');
                 if (edgeInfo) {
-                    edgeInfo.textContent = `E8 edges: ${totalEdgeCount} total (√2 length)`;
+                    edgeInfo.textContent = `E8 edges: ${edgeCount} total (√2 length)`;
                 }
             }
         }
@@ -626,15 +638,8 @@
                     const deltaX = e.clientX - mouseX;
                     const deltaY = e.clientY - mouseY;
                     
-                    leftE8Group.rotation.y += deltaX * 0.01;
-                    leftE8Group.rotation.x += deltaY * 0.01;
-                    leftEdgesGroup.rotation.y += deltaX * 0.01;
-                    leftEdgesGroup.rotation.x += deltaY * 0.01;
-                    
-                    rightE8Group.rotation.y += deltaX * 0.01;
-                    rightE8Group.rotation.x += deltaY * 0.01;
-                    rightEdgesGroup.rotation.y += deltaX * 0.01;
-                    rightEdgesGroup.rotation.x += deltaY * 0.01;
+                    e8e8Group.rotation.y += deltaX * 0.01;
+                    e8e8Group.rotation.x += deltaY * 0.01;
                 }
                 mouseX = e.clientX;
                 mouseY = e.clientY;
@@ -655,10 +660,7 @@
             requestAnimationFrame(animate);
             
             if (isRotating) {
-                leftE8Group.rotation.y += 0.003;
-                leftEdgesGroup.rotation.y += 0.003;
-                rightE8Group.rotation.y -= 0.003;
-                rightEdgesGroup.rotation.y -= 0.003;
+                e8e8Group.rotation.y += 0.003;
             }
             
             renderer.render(scene, camera);
@@ -682,18 +684,21 @@
             showLeftE8 = !showLeftE8;
             leftE8Group.visible = showLeftE8;
             leftEdgesGroup.visible = showLeftE8 && showEdges;
+            heteroticEdgesGroup.visible = showLeftE8 && showRightE8 && showEdges;
         }
         
         function toggleE8Right() {
             showRightE8 = !showRightE8;
             rightE8Group.visible = showRightE8;
             rightEdgesGroup.visible = showRightE8 && showEdges;
+            heteroticEdgesGroup.visible = showLeftE8 && showRightE8 && showEdges;
         }
         
         function toggleEdges() {
             showEdges = !showEdges;
             leftEdgesGroup.visible = showLeftE8 && showEdges;
             rightEdgesGroup.visible = showRightE8 && showEdges;
+            heteroticEdgesGroup.visible = showLeftE8 && showRightE8 && showEdges;
         }
         
         function changeProjection() {
@@ -735,12 +740,6 @@
         function updateSeparation() {
             separation = parseFloat(document.getElementById('separation').value);
             document.getElementById('sepValue').textContent = separation.toFixed(1);
-            generateE8Structures();
-        }
-        
-        function updateEdgeThreshold() {
-            edgeThreshold = parseFloat(document.getElementById('edgeThreshold').value);
-            document.getElementById('edgeValue').textContent = edgeThreshold.toFixed(2);
             generateE8Structures();
         }
         
