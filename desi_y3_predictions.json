@@ -1,0 +1,82 @@
+{
+  "registration_type": "forward_prediction",
+  "timestamp_utc": "2025-11-21T08:18:58.950339Z",
+  "predictions": {
+    "survey": "DESI_Year_3",
+    "predictions": [
+      {
+        "tracer": "BGS",
+        "z_effective": 0.3,
+        "dm_rd_predicted": 8.21960393439998,
+        "forecast_error": 0.10488529890278202,
+        "signal_to_noise": 78.36755027049801,
+        "n_galaxies_estimate": 15000000
+      },
+      {
+        "tracer": "LRG",
+        "z_effective": 0.5,
+        "dm_rd_predicted": 12.972382369187972,
+        "forecast_error": 0.11065880159467827,
+        "signal_to_noise": 117.22865404510067,
+        "n_galaxies_estimate": 8000000
+      },
+      {
+        "tracer": "LRG",
+        "z_effective": 0.7,
+        "dm_rd_predicted": 17.182716429654718,
+        "forecast_error": 0.11643230428657453,
+        "signal_to_noise": 147.5768819911263,
+        "n_galaxies_estimate": 6000000
+      },
+      {
+        "tracer": "LRG",
+        "z_effective": 0.9,
+        "dm_rd_predicted": 20.909198423093677,
+        "forecast_error": 0.12220580697847079,
+        "signal_to_noise": 171.09823943781402,
+        "n_galaxies_estimate": 4000000
+      },
+      {
+        "tracer": "ELG",
+        "z_effective": 1.1,
+        "dm_rd_predicted": 24.215032784707297,
+        "forecast_error": 0.12797930967036705,
+        "signal_to_noise": 189.2105282258306,
+        "n_galaxies_estimate": 3000000
+      },
+      {
+        "tracer": "ELG",
+        "z_effective": 1.4,
+        "dm_rd_predicted": 28.51346056169331,
+        "forecast_error": 0.13663956370821143,
+        "signal_to_noise": 208.67646081322917,
+        "n_galaxies_estimate": 2000000
+      },
+      {
+        "tracer": "QSO",
+        "z_effective": 1.7,
+        "dm_rd_predicted": 32.16848474001395,
+        "forecast_error": 0.1452998177460558,
+        "signal_to_noise": 221.39384094917196,
+        "n_galaxies_estimate": 500000
+      }
+    ],
+    "framework": {
+      "name": "quantum_antiviscosity",
+      "antiviscosity_coefficient": -5.7,
+      "sound_horizon_enhanced_mpc": 150.71,
+      "parameter_free": true,
+      "theoretical_basis": [
+        "Holographic principle",
+        "Margolus-Levitin theorem",
+        "Quantum Zeno effect",
+        "QTEP framework"
+      ]
+    }
+  },
+  "data_status": "NOT_YET_RELEASED",
+  "expected_release": "2026 (approximate)",
+  "contact": "bryce.weiner@informationphysicsinstitute.net",
+  "verification_note": "Predictions made before data availability",
+  "sha256_hash": "4675ff7a6f401f514e539197a224f25ec759a2cc2aea799b263b30b6378c78cc"
+}
