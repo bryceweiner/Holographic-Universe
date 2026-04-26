@@ -1,0 +1,170 @@
+{
+  "registration_type": "forward_prediction",
+  "survey_target": "DESI_Year_5_(DR3)",
+  "expected_release": "2027 (approximate)",
+  "timestamp_utc": "2026-04-26T07:01:04.366423Z",
+  "supersedes": {
+    "document": "DESI_Y3_PREDICTIONS.tex",
+    "json": "desi_y3_predictions.json",
+    "sha256_hash": "4675ff7a6f401f514e539197a224f25ec759a2cc2aea799b263b30b6378c78cc",
+    "reason": "DESI DR2 (the DR3/Y5 release's predecessor) was published on 2025-03-19, ~7 months before the Y3 preregistration timestamp 2025-11-21T08:18:58Z. The Y3 predictions were therefore not preregistered with respect to DR2 and have been retired. The numerical predictions were computed on a clean theoretical grid z in {0.30,0.50,...,1.70}, not on DR2's actual bin centers, so the Y3 file was a labeling/timing failure rather than a curve-fit-to-data; nevertheless, it cannot be cited as preregistration and is superseded by this Y5 file."
+  },
+  "framework": {
+    "name": "H-LCDM_quantum_antiviscosity",
+    "antiviscosity_coefficient_alpha": -5.7,
+    "sound_horizon_enhanced_mpc": 150.71,
+    "parameter_free": true,
+    "background_cosmology": {
+      "model": "flat_LambdaCDM_Planck_2018",
+      "H0_km_s_Mpc": 67.2748,
+      "H0_per_s": 2.18e-18,
+      "Omega_m": 0.315,
+      "Omega_Lambda": 0.685,
+      "z_drag": 1059,
+      "z_recomb": 1100
+    },
+    "gamma_at_z_recomb_per_s": 1.7068299130364232e-16,
+    "theoretical_basis": [
+      "Holographic principle",
+      "Margolus-Levitin theorem",
+      "Quantum Zeno effect",
+      "QTEP framework"
+    ]
+  },
+  "methodology": {
+    "bin_centers_source": "DESI DR2 effective redshifts (arXiv:2503.14738), used as best-public template for the geometry of the upcoming DR3/Y5 release. DR3 bin centers may shift; the registered predictions are at the template z_eff and should be re-evaluated at the DR3 z_eff once published.",
+    "forecast_sigma_construction": "DR3/Y5 per-bin \u03c3 \u2248 DR2 \u03c3 \u00d7 \u221a(3/5) \u2248 0.7746, reflecting the volume scaling from 3 to 5 years of survey integration.",
+    "distance_definitions": {
+      "D_M/r_d": "comoving angular-diameter distance / sound horizon at drag",
+      "D_H/r_d": "c / [H(z) r_d]",
+      "D_V/r_d": "[c z D_M^2 / H(z)]^(1/3) / r_d (Eisenstein 2005, eq. 2)"
+    },
+    "pipeline_commit_note": "Predictions emitted from pipeline.bao.bao_pipeline.BAOPipeline. A pre-existing (1+z)^(2/3) factor in _calculate_theoretical_DV_rs was corrected to match Eisenstein 2005 before this run; see commit log for the correction. The fix does not affect D_M/r_d or D_H/r_d predictions."
+  },
+  "predictions": {
+    "survey": "DESI_Year_5_(DR3)",
+    "predictions": [
+      {
+        "tracer": "BGS",
+        "z_effective": 0.295,
+        "d_m_over_r_d_predicted": 8.093432554638875,
+        "d_h_over_r_d_predicted": 25.27082911541474,
+        "d_v_over_r_d_predicted": 7.8747299669803805,
+        "forecast_errors": {
+          "D_V_over_r_d": {
+            "dr2_sigma": 0.07609196324185624,
+            "dr3_y5_forecast_sigma": 0.05894058128318723
+          }
+        }
+      },
+      {
+        "tracer": "LRG1",
+        "z_effective": 0.51,
+        "d_m_over_r_d_predicted": 13.19534418010564,
+        "d_h_over_r_d_predicted": 22.22840145639016,
+        "d_v_over_r_d_predicted": 12.544112810790596,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.16836678472905517,
+            "dr3_y5_forecast_sigma": 0.13041635066202398
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.42886832478046216,
+            "dr3_y5_forecast_sigma": 0.3321999759181207
+          }
+        }
+      },
+      {
+        "tracer": "LRG2",
+        "z_effective": 0.706,
+        "d_m_over_r_d_predicted": 17.30123512312358,
+        "d_h_over_r_d_predicted": 19.716899854620305,
+        "d_v_over_r_d_predicted": 16.091598303592566,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.17993122074837373,
+            "dr3_y5_forecast_sigma": 0.13937412428424437
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.33387003159912393,
+            "dr3_y5_forecast_sigma": 0.2586146144362302
+          }
+        }
+      },
+      {
+        "tracer": "LRG3+ELG1",
+        "z_effective": 0.934,
+        "d_m_over_r_d_predicted": 21.499154467731742,
+        "d_h_over_r_d_predicted": 17.17602988549465,
+        "d_v_over_r_d_predicted": 19.500128554987924,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.1617815860968114,
+            "dr3_y5_forecast_sigma": 0.12531547773519439
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.20104324858099562,
+            "dr3_y5_forecast_sigma": 0.1557274307243268
+          }
+        }
+      },
+      {
+        "tracer": "ELG2",
+        "z_effective": 1.321,
+        "d_m_over_r_d_predicted": 27.450233816644598,
+        "d_h_over_r_d_predicted": 13.751482781020993,
+        "d_v_over_r_d_predicted": 23.921118420661273,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.32455587500459765,
+            "dr3_y5_forecast_sigma": 0.25139989976131655
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.22455135092000672,
+            "dr3_y5_forecast_sigma": 0.17393672849631273
+          }
+        }
+      },
+      {
+        "tracer": "QSO",
+        "z_effective": 1.484,
+        "d_m_over_r_d_predicted": 29.595328060064436,
+        "d_h_over_r_d_predicted": 12.593428870867383,
+        "d_v_over_r_d_predicted": 25.390703680549038,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.763557644844186,
+            "dr3_y5_forecast_sigma": 0.591449208470178
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.5180117691713191,
+            "dr3_y5_forecast_sigma": 0.4012501910279919
+          }
+        }
+      },
+      {
+        "tracer": "Lya",
+        "z_effective": 2.33,
+        "d_m_over_r_d_predicted": 38.30465101194102,
+        "d_h_over_r_d_predicted": 8.425388439520342,
+        "d_v_over_r_d_predicted": 30.65370388295165,
+        "forecast_errors": {
+          "D_M_over_r_d": {
+            "dr2_sigma": 0.5316820280957407,
+            "dr3_y5_forecast_sigma": 0.4118391280585176
+          },
+          "D_H_over_r_d": {
+            "dr2_sigma": 0.10106245296844917,
+            "dr3_y5_forecast_sigma": 0.07828263945473479
+          }
+        }
+      }
+    ]
+  },
+  "data_status": "NOT_YET_RELEASED",
+  "contact": "bryce.weiner@informationphysicsinstitute.net",
+  "verification_note": "Predictions registered before DR3/Y5 data release. Hash and timestamp commit the framework predictions on the DR2-template bin centers prior to DR3 availability.",
+  "archive_doi": "10.13140/RG.2.2.16423.51365",
+  "archive_url": "https://doi.org/10.13140/RG.2.2.16423.51365",
+  "sha256_hash": "d9b234b8581cd0b27c315434eaf46b60dcf4530ea286c7a719629f1d16ba18fd"
+}
